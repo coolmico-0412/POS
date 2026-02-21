@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA 關鍵設定 -->
+    <meta name="theme-color" content="#1d4ed8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="POS Thai">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3029/3029337.png">
+    
+    <title>ระบบขายหน้าร้าน (商店收銀系統)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans Thai', 'ui-sans-serif', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .page { display: none; }
+        .page.active { display: block; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        #video-preview { width: 100%; height: auto; background: #000; }
+        .scan-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 70%; height: 30%; border: 3px solid #3b82f6; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
+            pointer-events: none; border-radius: 8px;
+        }
+        #product-modal { display: none; }
+        #product-modal.active { display: flex; }
+        /* 適配行動裝置手感 */
+        input, button { font-size: 16px !important; } 
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- 導覽列 Navbar -->
+    <nav class="bg-blue-700 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg safe-area-inset-top">
+        <h1 class="text-xl font-bold flex flex-col">
+            <span>ระบบสแกนขายสินค้า</span>
+            <span class="text-[10px] font-normal opacity-80">POS 掃描收銀系統</span>
+        </h1>
+        <div class="space-x-6 flex">
+            <button onclick="showPage('scan-page')" class="flex flex-col items-center">
+                <span class="font-bold text-lg">ชำระเงิน</span>
+                <span class="text-[10px] opacity-80">收銀</span>
+            </button>
+            <button onclick="showPage('report-page')" class="flex flex-col items-center">
+                <span class="font-bold text-lg">รายงาน</span>
+                <span class="text-[10px] opacity-80">報表</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 收銀頁面 -->
+    <div id="scan-page" class="page active p-4 max-w-2xl mx-auto pb-24">
+        <div class="bg-white rounded-3xl shadow-sm p-5 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex flex-col">
+                <span>สแกนบาร์โค้ด</span>
+                <span class="text-xs font-normal text-gray-400 italic">掃描條碼</span>
+            </h2>
+            <div id="video-container">
+                <video id="video-preview" autoplay playsinline muted></video>
+                <div class="scan-overlay"></div>
+            </div>
+            <div class="mt-5 flex gap-3">
+                <button id="start-btn" onclick="startScanner()" class="bg-emerald-500 text-white px-4 py-4 rounded-2xl flex-1 flex flex-col items-center justify-center shadow-lg active:scale-95 transition-transform">
+                    <span class="font-bold text-lg">เปิดกล้อง</span>
+                    <span class="text-xs opacity-90">開啟相機</span>
+                </button>
+                <button id="stop-btn" onclick="stopScanner()" class="bg-rose-500 text-white px-4 py-4 rounded-2xl flex-1 hidden flex flex-col items-center justify-center shadow-lg active:scale-95 transition-transform">
+                    <span class="font-bold text-lg">ปิดกล้อง</span>
+                    <span class="text-xs opacity-90">關閉相機</span>
+                </button>
+            </div>
+            <p id="scan-status" class="text-sm text-gray-400 mt-4 text-center">พร้อมใช้งาน (準備就緒)</p>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm p-5">
+            <h2 class="text-xl font-bold mb-5 flex justify-between items-center">
+                <div class="flex flex-col">
+                    <span>รายการสินค้า</span>
+                    <span class="text-xs font-normal text-gray-500">購物清單</span>
+                </div>
+                <span id="item-count" class="text-sm font-normal bg-blue-50 text-blue-600 px-4 py-1 rounded-full font-bold">0 รายการ</span>
+            </h2>
+            
+            <div id="cart-items" class="space-y-4 min-h-[300px] border-b border-dashed pb-6 mb-6">
+                <div class="flex flex-col items-center justify-center py-16 text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <p class="italic text-sm">กรุณาสแกนสินค้า... (請開始掃描商品...)</p>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-8 px-2">
+                <div class="flex flex-col">
+                    <span class="text-2xl font-bold text-gray-800">ยอดรวมทั้งหมด</span>
+                    <span class="text-xs text-gray-400">總計金額 (Total)</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-4xl font-black text-blue-700 tracking-tight">NT$ <span id="total-price">0</span></span>
+                </div>
+            </div>
+            
+            <button onclick="checkout()" class="w-full bg-blue-700 text-white py-6 rounded-2xl text-2xl font-bold hover:bg-blue-800 shadow-xl active:scale-[0.98] transition-all flex flex-col items-center">
+                <span>ยืนยันการชำระเงิน</span>
+                <span class="text-xs font-normal opacity-70">確認結帳 (Checkout)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 報表頁面 -->
+    <div id="report-page" class="page p-4 max-w-4xl mx-auto pb-20">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-3xl shadow-sm">
+                <h3 class="text-lg font-bold">ยอดขายรายวัน (每日銷售額)</h3>
+                <canvas id="dailyChart" class="mt-4"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-sm">
+                <h3 class="text-lg font-bold">ยอดขายรายเดือน (每月銷售額)</h3>
+                <canvas id="monthlyChart" class="mt-4"></canvas>
+            </div>
+        </div>
+        <div class="mt-6 bg-white p-6 rounded-3xl shadow-sm">
+            <h3 class="text-lg font-bold mb-4">ประวัติการทำรายการ (交易紀錄)</h3>
+            <div class="overflow-hidden rounded-xl border border-gray-100">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                        <tr>
+                            <th class="py-4 px-4">เวลา (時間)</th>
+                            <th class="py-4 px-4 text-right">ยอดเงิน (金額)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body" class="divide-y divide-gray-50"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 彈窗 Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in duration-300">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </div>
+                <h3 id="modal-title" class="text-2xl font-bold text-gray-800">ข้อมูลสินค้า</h3>
+                <p id="modal-barcode" class="text-blue-600 font-mono font-bold mt-1"></p>
+            </div>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ชื่อสินค้า (品項名稱)</label>
+                    <input type="text" id="new-product-name" placeholder="..." class="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ราคา (價格) NT$</label>
+                    <input type="number" id="new-product-price" placeholder="0" class="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold text-xl">
+                </div>
+            </div>
+
+            <div class="flex gap-4 mt-10">
+                <button onclick="closeProductModal()" class="flex-1 px-4 py-4 rounded-2xl text-gray-400 font-bold hover:bg-gray-100 transition-colors flex flex-col items-center">
+                    <span>ยกเลิก</span>
+                    <span class="text-[10px]">取消</span>
+                </button>
+                <button onclick="saveNewProduct()" class="flex-1 px-4 py-4 bg-blue-700 text-white rounded-2xl font-bold hover:bg-blue-800 shadow-lg shadow-blue-200 transition-all flex flex-col items-center">
+                    <span>บันทึก</span>
+                    <span class="text-[10px]">儲存</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900/95 text-white px-8 py-5 rounded-3xl opacity-0 transition-all pointer-events-none z-[110] text-center shadow-2xl min-w-[280px]">
+        Message
+    </div>
+
+    <script>
+        // --- 核心邏輯 (與先前功能一致) ---
+        const defaultProducts = {
+            "4710018110123": { name: "Coke (可口可樂)", price: 35 },
+            "4710123456789": { name: "Rice Ball (肉鬆飯糰)", price: 30 }
+        };
+        
+        let products = JSON.parse(localStorage.getItem('pos_custom_products') || JSON.stringify(defaultProducts));
+        let cart = [];
+        let salesHistory = JSON.parse(localStorage.getItem('pos_sales_history') || '[]');
+        let videoStream = null;
+        let scanInterval = null;
+        let pendingBarcode = null;
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            window.scrollTo(0,0);
+            if(pageId === 'report-page') updateReports();
+        }
+
+        async function startScanner() {
+            const status = document.getElementById('scan-status');
+            const video = document.getElementById('video-preview');
+            if (!('BarcodeDetector' in window)) {
+                showToast("ไม่รองรับการสแกนบนเบราว์เซอร์นี้\n(此瀏覽器不支援掃描功能)");
+                return;
+            }
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = videoStream;
+                document.getElementById('start-btn').classList.add('hidden');
+                document.getElementById('stop-btn').classList.remove('hidden');
+                status.innerText = "กำลังสแกน... (掃描中...)";
+                const barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'qr_code', 'code_128', 'upc_a'] });
+                scanInterval = setInterval(async () => {
+                    if (document.getElementById('product-modal').classList.contains('active')) return;
+                    try {
+                        const barcodes = await barcodeDetector.detect(video);
+                        if (barcodes.length > 0) handleBarcodeFound(barcodes[0].rawValue);
+                    } catch (e) {}
+                }, 600);
+            } catch (err) {
+                showToast("ไม่สามารถเข้าถึงกล้องได้\n(無法取得相機權限)");
+            }
+        }
+
+        function stopScanner() {
+            if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+            clearInterval(scanInterval);
+            document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('stop-btn').classList.add('hidden');
+            document.getElementById('scan-status').innerText = "ปิดกล้องแล้ว (相機已關閉)";
+        }
+
+        function handleBarcodeFound(code) {
+            if (cart.length > 0 && cart[0].barcode === code && (Date.now() - cart[0].timestamp < 2000)) return;
+            if (products[code]) {
+                addToCart(code, products[code]);
+            } else {
+                openProductModal(code, "พบบาร์โค้ดใหม่ (發現新條碼)");
+            }
+        }
+
+        function addToCart(code, product) {
+            cart.unshift({ ...product, barcode: code, timestamp: Date.now(), id: Math.random().toString(36).substr(2, 9) });
+            if ("vibrate" in navigator) navigator.vibrate(100);
+            renderCart();
+            showToast(`เพิ่ม: ${product.name}`);
+        }
+
+        function openProductModal(code, title) {
+            pendingBarcode = code;
+            document.getElementById('modal-title').innerText = title || "ข้อมูลสินค้า";
+            document.getElementById('modal-barcode').innerText = code;
+            const existing = products[code];
+            document.getElementById('new-product-name').value = existing ? existing.name : "";
+            document.getElementById('new-product-price').value = existing ? existing.price : "";
+            document.getElementById('product-modal').classList.add('active');
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.remove('active');
+            pendingBarcode = null;
+        }
+
+        function saveNewProduct() {
+            const name = document.getElementById('new-product-name').value.trim();
+            const price = parseInt(document.getElementById('new-product-price').value);
+            if (!name || isNaN(price)) { showToast("ข้อมูลไม่ครบ (資訊不完整)"); return; }
+            products[pendingBarcode] = { name, price };
+            localStorage.setItem('pos_custom_products', JSON.stringify(products));
+            
+            cart.forEach(item => { if(item.barcode === pendingBarcode) { item.name = name; item.price = price; } });
+            if (!cart.some(i => i.barcode === pendingBarcode && (Date.now() - i.timestamp < 1000))) {
+                addToCart(pendingBarcode, { name, price });
+            } else {
+                renderCart();
+                showToast("บันทึกแล้ว (已儲存)");
+            }
+            closeProductModal();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            const totalDisplay = document.getElementById('total-price');
+            const countDisplay = document.getElementById('item-count');
+            if (cart.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center py-16 text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <p class="italic text-sm text-center">กรุณาสแกนสินค้า...<br><span>請開始掃描商品...</span></p>
+                </div>`;
+                totalDisplay.innerText = "0";
+                countDisplay.innerText = "0 รายการ";
+                return;
+            }
+            let total = 0;
+            container.innerHTML = cart.map(item => {
+                total += item.price;
+                return `<div class="flex justify-between items-center bg-gray-50 p-5 rounded-[1.5rem] border border-gray-100 relative shadow-sm">
+                    <div class="flex-1">
+                        <p class="font-bold text-gray-800 text-lg leading-tight">${item.name}</p>
+                        <p class="text-[10px] text-gray-400 font-mono mt-1">${item.barcode}</p>
+                        <button onclick="openProductModal('${item.barcode}', 'แก้ไขสินค้า')" class="mt-3 text-blue-600 text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full w-fit">
+                            <span>แก้ไข</span> <span class="text-[10px] font-normal opacity-70">(修改)</span>
+                        </button>
+                    </div>
+                    <div class="text-right flex flex-col items-end gap-3">
+                        <p class="font-black text-2xl text-gray-900 tracking-tighter">NT$ ${item.price}</p>
+                        <button onclick="removeItem('${item.id}')" class="text-gray-400 p-2 hover:text-rose-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+            totalDisplay.innerText = total.toLocaleString();
+            countDisplay.innerText = `${cart.length} รายการ (品項)`;
+        }
+
+        function removeItem(id) { cart = cart.filter(item => item.id !== id); renderCart(); }
+
+        function checkout() {
+            if (cart.length === 0) { showToast("รายการว่างเปล่า! (清單是空的!)"); return; }
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            salesHistory.push({ id: Date.now(), time: new Date().toISOString(), items: cart.length, total: total });
+            localStorage.setItem('pos_sales_history', JSON.stringify(salesHistory));
+            showToast(`ชำระเงินสำเร็จ (結帳成功)\nNT$ ${total}`);
+            cart = []; renderCart();
+        }
+
+        let dailyChart, monthlyChart;
+        function updateReports() {
+            const historyBody = document.getElementById('history-body');
+            const sortedHistory = [...salesHistory].sort((a, b) => b.id - a.id);
+            historyBody.innerHTML = sortedHistory.slice(0, 20).map(tx => `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="py-4 px-4">
+                        <p class="font-bold text-gray-800">${new Date(tx.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        <p class="text-[10px] text-gray-400">${new Date(tx.time).toLocaleDateString()}</p>
+                    </td>
+                    <td class="py-4 px-4 text-right">
+                        <p class="font-black text-blue-700 text-lg">NT$ ${tx.total}</p>
+                        <p class="text-[10px] text-gray-400">${tx.items} ชิ้น (件)</p>
+                    </td>
+                </tr>
+            `).join('');
+            const dailyData = {}; const monthlyData = new Array(12).fill(0);
+            salesHistory.forEach(tx => {
+                const date = new Date(tx.time); const dateStr = date.toISOString().split('T')[0];
+                dailyData[dateStr] = (dailyData[dateStr] || 0) + tx.total;
+                if (date.getFullYear() === new Date().getFullYear()) monthlyData[date.getMonth()] += tx.total;
+            });
+            const dLabels = []; const dValues = [];
+            for(let i=6; i>=0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i); const s = d.toISOString().split('T')[0];
+                dLabels.push(s.slice(5)); dValues.push(dailyData[s] || 0);
+            }
+            renderCharts(dLabels, dValues, monthlyData);
+        }
+
+        function renderCharts(dLabels, dValues, mData) {
+            const opt = { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } };
+            const ctxD = document.getElementById('dailyChart').getContext('2d');
+            if (dailyChart) dailyChart.destroy();
+            dailyChart = new Chart(ctxD, { type: 'bar', data: { labels: dLabels, datasets: [{ data: dValues, backgroundColor: '#3b82f6', borderRadius: 8 }] }, options: opt });
+            const ctxM = document.getElementById('monthlyChart').getContext('2d');
+            if (monthlyChart) monthlyChart.destroy();
+            monthlyChart = new Chart(ctxM, { type: 'line', data: { labels: ['1','2','3','4','5','6','7','8','9','10','11','12'], datasets: [{ data: mData, borderColor: '#10b981', tension: 0.4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)' }] }, options: opt });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg; toast.style.bottom = "40px"; toast.classList.replace('opacity-0', 'opacity-100');
+            setTimeout(() => { toast.classList.replace('opacity-100', 'opacity-0'); toast.style.bottom = "12px"; }, 3000);
+        }
+
+        window.onload = () => { renderCart(); };
+
+        // 模擬 Service Worker 註冊 (PWA 必備)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('data:text/javascript;base64,' + btoa('self.addEventListener("fetch", (e) => {});'));
+            });
+        }
+    </script>
+</body>
+</html>
