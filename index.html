@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="refresh" content="0; url=shop.html">
+<link rel="canonical" href="shop.html">
+<title>ร้านค้าออนไลน์</title>
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #FFF8F2;
+    font-family: 'Sarabun', sans-serif;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loader {
+    width: 48px; height: 48px;
+    border: 4px solid #F0DDD0;
+    border-top-color: #C94E6E;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  p { color: #9B7060; font-size: 14px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="loader"></div>
+<p>กำลังโหลด… / 載入中…</p>
+<script>
+  // Hard redirect — covers cases where meta refresh is blocked
+  window.location.replace('shop.html');
+</script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<!-- ── PWA Core ── -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C94E6E">
+
+<!-- ── iOS PWA ── -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ร้านค้า">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<!-- iOS splash screens -->
+<meta name="apple-mobile-web-app-orientations" content="portrait">
+
+<!-- ── Android / General ── -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="ร้านค้าออนไลน์">
+<meta name="description" content="สั่งซื้อสินค้าออนไลน์ 線上訂購系統">
+
+<!-- ── Open Graph (share preview) ── -->
+<meta property="og:title" content="ร้านค้าออนไลน์ 線上訂購">
+<meta property="og:description" content="สั่งซื้อสินค้าออนไลน์ได้ทันที">
+<meta property="og:type" content="website">
+
+<title>สั่งซื้อออนไลน์ 線上訂購</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shop.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+</head>
+<body>
+
+<!-- ── PWA: Offline Bar ── -->
+<div class="offline-bar" id="offline-bar">
+  📵 ไม่มีอินเทอร์เน็ต — ใช้ข้อมูลที่แคชไว้ / 離線模式，使用快取資料
+</div>
+
+<!-- ── PWA: Install Banner ── -->
+<div class="pwa-banner" id="pwa-banner">
+  <div class="pwa-banner-icon">🛍</div>
+  <div class="pwa-banner-text">
+    <div class="pwa-banner-title">ติดตั้งแอปบนหน้าจอหลัก</div>
+    <div class="pwa-banner-sub">加到主畫面，像 App 一樣開啟</div>
+  </div>
+  <button class="pwa-banner-install" id="pwa-install-btn" onclick="pwaInstall()">
+    ติดตั้ง
+  </button>
+  <button class="pwa-banner-dismiss" onclick="pwaDismiss()" aria-label="ปิด">×</button>
+</div>
+
+<!-- ── Auth: Member Overlay ── -->
+<div class="auth-overlay" id="auth-overlay" style="display:none">
+  <div class="auth-box">
+    <div class="auth-hero">
+      <div class="auth-store-icon">🛍</div>
+      <div class="auth-store-name" id="auth-store-name-text">ร้านค้าออนไลน์</div>
+      <div class="auth-tagline" id="auth-tagline-text">
+        ระบุรหัสสมาชิกหรือลงทะเบียนใหม่
+      </div>
+    </div>
+    <div class="auth-body">
+      <div class="auth-desc" id="auth-desc-lookup">🪪 มีรหัสสมาชิกแล้ว?</div>
+      <input id="auth-mid-field" type="text" class="field-input"
+             placeholder="รหัสสมาชิก เช่น M0001"
+             maxlength="6" style="text-transform:uppercase;font-family:'Courier New',monospace;font-weight:700;letter-spacing:1px;color:var(--primary)"
+             oninput="this.value=this.value.toUpperCase()"
+             onkeydown="if(event.key==='Enter')document.getElementById('auth-lookup-phone').focus()">
+      <input id="auth-lookup-phone" type="tel" class="field-input"
+             placeholder="เบอร์โทรที่ลงทะเบียนไว้"
+             autocomplete="tel"
+             onkeydown="if(event.key==='Enter')lookupMember()">
+      <button class="auth-submit-btn" id="auth-lookup-btn" onclick="lookupMember()"
+              style="background:linear-gradient(135deg,var(--primary),#E8892B)">
+        🔍 ค้นหาและเข้าสู่ระบบ
+      </button>
+      <div id="auth-lookup-result" style="display:none;font-size:13px;border-radius:var(--r-sm);padding:10px 12px;"></div>
+
+      <div class="auth-or"><span id="auth-or-1">หรือ</span></div>
+
+      <div class="auth-new-form">
+        <div class="auth-new-title" id="auth-new-title-text">📝 สมัครสมาชิกใหม่</div>
+        <input class="field-input" id="auth-name" type="text"
+               placeholder="ชื่อ-นามสกุล (บังคับ)" autocomplete="name">
+        <input class="field-input" id="auth-phone" type="tel"
+               placeholder="เบอร์โทรศัพท์ (บังคับ)" autocomplete="tel">
+        <!-- 國籍選單 -->
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:12px;font-weight:600;color:var(--text2)" id="auth-nat-label">สัญชาติ</label>
+          <select id="auth-nationality" class="field-input" style="cursor:pointer"
+                  onchange="onNatChange(this.value)">
+            <option value="">— เลือกสัญชาติ / Select —</option>
+          </select>
+        </div>
+        <button class="auth-submit-btn" id="auth-register-btn" onclick="registerMember()">
+          ✓ สมัครสมาชิก
+        </button>
+      </div>
+
+      <div class="auth-or"><span></span></div>
+      <button class="auth-guest-btn" id="auth-guest-btn-text" onclick="continueAsGuest()">
+        ดำเนินการในฐานะแขก
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Member Side Drawer ── -->
+<div class="member-drawer-overlay" id="member-overlay" onclick="handleMemberOutsideClick(event)">
+  <div class="member-drawer" id="member-drawer">
+    <div class="member-hd">
+      <button class="member-close-btn" onclick="closeMemberDrawer()">×</button>
+      <div class="member-av-lg" id="m-avatar-lg">?</div>
+      <div class="member-dname" id="m-dname">—</div>
+      <div class="member-id-chip" id="m-id-chip">🪪 M0000</div>
+      <div class="member-provider" id="m-provider"></div>
+    </div>
+    <div class="member-body">
+      <div class="member-section-title" id="m-history-title">ประวัติ</div>
+      <div id="m-order-hist">
+        <div style="text-align:center;color:var(--muted2);font-size:13px;padding:20px 0">ยังไม่มีประวัติการสั่งซื้อ</div>
+      </div>
+    </div>
+    <div class="member-ft" style="display:flex;flex-direction:column;gap:8px">
+      <button class="logout-btn" id="m-logout-btn" onclick="logout()">🚪 ออกจากระบบ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Profile Modal ── -->
+<div class="modal-overlay" id="edit-profile-modal" onclick="handleModalOutsideClick(event,'edit-profile-modal')">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-hd">
+      <div class="modal-title" id="edit-profile-title">✏ แก้ไขข้อมูลสมาชิก</div>
+      <button class="modal-close" onclick="closeModal('edit-profile-modal')">×</button>
+    </div>
+    <div class="modal-body" style="gap:14px">
+      <div class="field-group">
+        <label class="field-label" id="ep-name-label">ชื่อ</label>
+        <input class="field-input" id="ep-name" type="text" autocomplete="name">
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="ep-phone-label">เบอร์โทร</label>
+        <input class="field-input" id="ep-phone" type="tel" autocomplete="tel">
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="ep-nat-label">สัญชาติ / ภาษา</label>
+        <select class="field-input" id="ep-nationality" style="cursor:pointer"
+                onchange="onNatChange(this.value)">
+          <option value="">— Select —</option>
+        </select>
+        <div class="field-hint" style="margin-top:4px" id="ep-nat-hint">เลือกสัญชาติเพื่อเปลี่ยนภาษา</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" onclick="closeModal('edit-profile-modal')">← ยกเลิก</button>
+      <button class="btn-confirm" onclick="saveEditProfile()">
+        <span id="ep-save-btn">บันทึก</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Header ── -->
+<header class="header">
+  <div class="brand">
+    <div class="brand-icon">🛍</div>
+    <div>
+      <div class="brand-name" id="shop-name">ร้านค้าออนไลน์</div>
+      <div class="brand-sub" id="brand-sub-text">คลิกสินค้าเพื่อเพิ่มลงตะกร้า</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <!-- Auth Area: hidden/shown by JS -->
+    <div id="auth-area-loggedout">
+      <button class="login-btn-hdr" onclick="showAuthModal()">
+        <span id="login-btn-text">🪪 สมาชิก / 會員</span>
+      </button>
+    </div>
+    <div id="auth-area-loggedin" style="display:none">
+      <div class="user-area" onclick="openMemberDrawer()">
+        <div class="user-avatar" id="hdr-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="hdr-uname">—</div>
+          <div class="user-mid" id="hdr-mid">M0000</div>
+        </div>
+      </div>
+    </div>
+    <!-- Cart button -->
+    <button class="cart-btn-hdr" onclick="openDrawer()" id="hdr-cart-btn">
+      <span class="cart-icon">🛒</span>
+      <span id="hdr-cart-txt">NT$ 0</span>
+      <span class="cart-badge" id="hdr-badge" style="display:none">0</span>
+    </button>
+  </div>
+</header>
+
+<!-- ── Category Tabs ── -->
+<div class="tabs-wrap">
+  <div class="tabs-inner" id="tabs-container">
+    <!-- Tabs injected by JS -->
+  </div>
+</div>
+
+<!-- ── Main Layout ── -->
+<div class="main-wrap">
+
+  <!-- Product Area -->
+  <div class="products-area">
+    <div class="product-grid" id="product-grid">
+      <!-- Products injected by JS -->
+    </div>
+  </div>
+
+  <!-- Cart Sidebar (Desktop ≥900px) -->
+  <aside class="cart-sidebar" id="cart-sidebar">
+    <div class="cart-hd">
+      <div class="cart-title">
+        🛒 <span id="sb-cart-title">ตะกร้าสินค้า</span>
+        <span class="cart-count-pill" id="sb-count">0 ชิ้น</span>
+      </div>
+      <button class="cart-clear-btn" id="sb-clear-btn" onclick="clearCart()">ล้างตะกร้า</button>
+    </div>
+    <div class="cart-body-scroll" id="sb-cart-body">
+      <div class="cart-empty">
+        <div class="cart-empty-icon">🛒</div>
+        <div class="cart-empty-text">購物車是空的<br>點擊商品開始選購</div>
+      </div>
+    </div>
+    <div class="cart-ft">
+      <div class="cart-summary">
+        <div class="cart-total-row">
+          <span class="cart-total-label" id="sb-total-label">ยอดรวม</span>
+          <span class="cart-total-amt" id="sb-total">NT$ 0</span>
+        </div>
+        <div class="cart-items-lbl" id="sb-items-lbl"></div>
+      </div>
+      <button class="checkout-btn" id="sb-checkout-btn" onclick="openOrderModal()" disabled>
+        🎉 สั่งซื้อ
+      </button>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ── Mobile Bottom Bar ── -->
+<div class="mobile-cart-bar" onclick="openDrawer()" id="mobile-cart-bar">
+  <div class="mcb-inner" id="mcb-inner">
+    <div class="mcb-empty">購物車是空的，點擊商品開始選購</div>
+  </div>
+</div>
+
+<!-- ── Mobile Cart Drawer ── -->
+<div class="cart-drawer-overlay" id="drawer-overlay" onclick="handleDrawerOutsideClick(event)">
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-hd">
+      <div class="drawer-title">🛒 <span id="drawer-cart-title">ตะกร้าสินค้า</span></div>
+      <button class="drawer-close" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-body" id="drawer-cart-body">
+      <!-- Cart items -->
+    </div>
+    <div class="drawer-ft">
+      <div class="cart-total-row">
+        <span class="cart-total-label" id="drawer-total-label">ยอดรวม</span>
+        <span class="cart-total-amt" id="drawer-total">NT$ 0</span>
+      </div>
+      <button class="checkout-btn" id="drawer-checkout-btn" onclick="closeDrawer();openOrderModal()" disabled>
+        🎉 สั่งซื้อ
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Order Modal ── -->
+<div class="modal-overlay" id="order-modal" onclick="handleModalOutsideClick(event,'order-modal')">
+  <div class="modal-box" id="order-box">
+    <div class="modal-hd">
+      <div class="modal-title" id="modal-order-title">📋 ยืนยันคำสั่งซื้อ</div>
+      <button class="modal-close" onclick="closeModal('order-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-member-chip" style="display:none;background:var(--primary-glow);border:1px solid rgba(201,78,110,.25);border-radius:var(--r-sm);padding:8px 12px;font-size:12px;color:var(--primary);font-weight:600;"></div>
+      <div>
+        <div class="order-summary-hd" id="modal-customer-info-title">👤 ข้อมูลลูกค้า</div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label" id="modal-name-label">ชื่อ</label>
+            <input class="field-input" id="customer-name" type="text" placeholder="ชื่อ" autocomplete="name">
+          </div>
+          <div class="field-group">
+            <label class="field-label" id="modal-phone-label">เบอร์โทร</label>
+            <input class="field-input" id="customer-phone" type="tel" placeholder="เบอร์โทร" autocomplete="tel">
+          </div>
+        </div>
+        <div class="field-hint" id="modal-customer-hint" style="margin-top:6px">ชื่อและเบอร์โทรไม่บังคับ</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="modal-delivery-label">📍 สถานที่จัดส่ง <span style="color:var(--primary);font-size:12px">*</span></label>
+        <div class="geo-row">
+          <input class="field-input" id="order-delivery" type="text" placeholder="請按「取得目前座標」" autocomplete="off" readonly>
+          <button class="geo-btn" id="geo-btn" onclick="getCurrentLocation()" type="button">取得目前座標</button>
+          <button class="geo-btn geo-btn-secondary" id="map-pick-btn" onclick="openMapPicker()" type="button">地圖選點</button>
+        </div>
+        <div class="geo-status" id="geo-status"></div>
+        <div class="field-hint" id="modal-delivery-err" style="color:var(--primary);display:none">กรุณากรอกสถานที่จัดส่ง</div>
+        <div class="field-hint" id="delivery-range-hint" style="margin-top:4px;line-height:1.7;display:none"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="modal-note-label">หมายเหตุ <span style="font-weight:400;color:var(--muted2)">（ไม่บังคับ）</span></label>
+        <input class="field-input" id="order-note" type="text" placeholder="เช่น ไม่ใส่น้ำแข็ง">
+      </div>
+      <div>
+        <div class="order-summary-hd" id="modal-summary-title">🧾 รายการสินค้า</div>
+        <table class="order-table">
+          <thead>
+            <tr>
+              <th id="modal-th-product">สินค้า</th>
+              <th style="text-align:center" id="modal-th-qty">จำนวน</th>
+              <th id="modal-th-sub">รวม</th>
+            </tr>
+          </thead>
+          <tbody id="modal-order-body"></tbody>
+        </table>
+        <div class="order-total-row">
+          <span class="order-total-label" id="modal-order-total-label">ยอดรวมทั้งหมด</span>
+          <span class="order-total-amt" id="modal-order-total">NT$ 0</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="modal-btn-back" onclick="closeModal('order-modal')">← แก้ไข</button>
+      <button class="btn-confirm" id="confirm-btn" onclick="submitOrder()">
+        <span id="modal-btn-confirm-text">✓ ยืนยันสั่งซื้อ</span>
+      </button>
+    </div>
+  </div></div>
+
+<!-- ── Success Modal ── -->
+<div class="modal-overlay" id="success-modal">
+  <div class="modal-box">
+    <div class="success-box">
+      <div class="success-icon">🎉</div>
+      <div class="success-title" id="success-title-text">ส่งคำสั่งซื้อแล้ว！</div>
+      <div class="success-msg" id="success-msg-text">ขอบคุณที่สั่งซื้อ！<br>เราจะเตรียมสินค้าให้คุณโดยเร็ว</div>
+      <div class="success-order-id" id="success-order-id">เลขที่ออเดอร์：—</div>
+      <button class="btn-done" id="btn-done-text" onclick="closeSuccess()">สั่งซื้อต่อ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Firebase 狀態指示點 ── -->
+<div id="fb-indicator" title="กำลังเชื่อมต่อ Firebase…"
+  style="position:fixed;bottom:16px;right:16px;width:10px;height:10px;border-radius:50%;
+         background:#f59e0b;z-index:999;box-shadow:0 0 6px rgba(0,0,0,.25);
+         transition:background .5s;pointer-events:none;">
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script type="module" src="shop.js"></script>
+<!-- ── Map Picker Modal ── -->
+<div class="map-overlay" id="map-overlay">
+  <div class="map-box">
+    <div class="map-hd">
+      <div class="map-title">📍 點選送貨位置 / ปักหมุดที่อยู่</div>
+      <button class="map-close" onclick="closeMapPicker()">×</button>
+    </div>
+    <div id="map-container"></div>
+    <div class="map-info" id="map-info">
+      請點擊地圖上的送貨位置來取得座標<br>
+      若目前定位不準，可用 PIN 修正位置
+    </div>
+    <div class="map-ft">
+      <button class="btn-cancel" onclick="closeMapPicker()" style="flex:1">
+        ยกเลิก / 取消
+      </button>
+      <button class="btn-confirm" id="map-confirm-btn" onclick="confirmMapPin()" disabled
+              style="flex:2;background:linear-gradient(135deg,var(--primary),var(--accent))">
+        ✓ ยืนยันตำแหน่ง / 確認位置
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,28 @@
+{
+  "name": "POS SYSTEM",
+  "short_name": "POS",
+  "description": "ระบบ POS ออนไลน์ / 線上收銀系統",
+  "start_url": "POS.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f1f5f9",
+  "theme_color": "#2563eb",
+  "lang": "th",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "pos-icons/pos-icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "pos-icons/pos-icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "pos-icons/pos-icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "pos-icons/pos-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "pos-icons/pos-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "แคชเชียร์ / 收銀台",
+      "url": "POS.html",
+      "icons": [{ "src": "pos-icons/pos-icon-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

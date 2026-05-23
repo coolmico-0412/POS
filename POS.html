@@ -1,393 +1,604 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PWA 關鍵設定 -->
-    <meta name="theme-color" content="#1d4ed8">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="POS Thai">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3029/3029337.png">
-    
-    <title>ระบบขายหน้าร้าน (商店收銀系統)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans Thai', 'ui-sans-serif', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
-        .page { display: none; }
-        .page.active { display: block; }
-        #video-container { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
-        #video-preview { width: 100%; height: auto; background: #000; }
-        .scan-overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 70%; height: 30%; border: 3px solid #3b82f6; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
-            pointer-events: none; border-radius: 8px;
-        }
-        #product-modal { display: none; }
-        #product-modal.active { display: flex; }
-        /* 適配行動裝置手感 */
-        input, button { font-size: 16px !important; } 
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<!-- ?? PWA Core ?? -->
+<link rel="manifest" href="pos-manifest.json">
+<meta name="theme-color" content="#2563eb">
+
+<!-- ?? iOS PWA ?? -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="POS">
+<link rel="apple-touch-icon" href="pos-icons/pos-icon-192.png">
+
+<!-- ?? General ?? -->
+<meta name="application-name" content="POS SYSTEM">
+<meta name="description" content="鉊?萼鉊? POS 鉊冢葉鉊?鉊丞?鉆?/ 蝺??園?蝟餌絞">
+
+<!-- Thai flag favicon (SVG inline) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%23A51931'/%3E%3Crect y='3.33' width='30' height='13.34' fill='%23F4F5F8'/%3E%3Crect y='6.67' width='30' height='6.66' fill='%232D2A4A'/%3E%3C/svg%3E">
+<title>POS SYSTEM</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pos.css">
+<script type="module" src="pos.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
 
-    <!-- 導覽列 Navbar -->
-    <nav class="bg-blue-700 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg safe-area-inset-top">
-        <h1 class="text-xl font-bold flex flex-col">
-            <span>ระบบสแกนขายสินค้า</span>
-            <span class="text-[10px] font-normal opacity-80">POS 掃描收銀系統</span>
-        </h1>
-        <div class="space-x-6 flex">
-            <button onclick="showPage('scan-page')" class="flex flex-col items-center">
-                <span class="font-bold text-lg">ชำระเงิน</span>
-                <span class="text-[10px] opacity-80">收銀</span>
-            </button>
-            <button onclick="showPage('report-page')" class="flex flex-col items-center">
-                <span class="font-bold text-lg">รายงาน</span>
-                <span class="text-[10px] opacity-80">報表</span>
-            </button>
+<!-- ?? PWA: ?Ｙ??內璇??? -->
+<div class="pwa-offline-bar" id="pwa-offline-bar">
+  ? 鉆腹鉆腹鉊菽葉鉊毯?鉆鉊葉鉊??鉆鉊?鉊???鉊?鉊冢腹鉊嫩艇鉊冢葡鉊?鉊﹤?鉊冢萵鉊?鉊? / ?Ｙ?銝哨?鞈??航????</div>
+
+<!-- ?? PWA: ?啁??祆?唳? ?? -->
+<div class="pwa-update-bar" id="pwa-update-bar">
+  <span style="flex:1">?? 鉊﹤葭鉆鉊抉葉鉊??鉊萵鉊?鉊徇腹鉆?/ ???舐</span>
+  <button class="pwa-upd-btn" onclick="posApplyUpdate()">鉊冢萵鉊?鉊?鉆鉊丞腺 / 蝡?湔</button>
+  <button class="pwa-upd-close" onclick="document.getElementById('pwa-update-bar').classList.remove('show')">?</button>
+</div>
+
+<!-- ?? PWA: 摰?璈怠? ?? -->
+<div class="pwa-install-bar" id="pwa-install-bar">
+  <div class="pib-icon">?</div>
+  <div class="pib-text">
+    <div class="pib-title">鉊葩鉊?鉊晤?鉊?POS 鉊?鉊徇?鉆葡鉊葉鉊徇艇鉊晤?</div>
+    <div class="pib-sub">?銝餌?ｇ???App 銝璅????/div>
+  </div>
+  <button class="pib-btn" onclick="posInstallPWA()">鉊葩鉊?鉊晤?鉊?/button>
+  <button class="pib-dismiss" onclick="posInstallDismiss()">?</button>
+</div>
+
+<nav>
+  <div class="brand">POS SYSTEM</div>
+  <button class="nav-tab active" onclick="showPage('pos',this)">? 鉆?鉊?鉊葭鉊Ｒ腦鉆?span class="zh">?園???/span></button>
+  <button class="nav-tab" onclick="showPage('online-orders',this)" id="nav-online">?? 鉊冢葉鉊?鉊丞?鉆?span class="zh">蝺?閮</span><span id="online-badge" style="display:none;margin-left:4px;background:var(--red);color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;font-family:var(--mono)">0</span></button>
+  <button class="nav-tab" onclick="showPage('products',this)">? 鉊芹葩鉊?鉆葡<span class="zh">??蝞∠?</span></button>
+  <button class="nav-tab" onclick="showPage('report',this)">?? 鉊?葡鉊Ｒ?鉊耜?<span class="zh">?瑕?梯”</span></button>
+</nav>
+
+<!-- ?????園???????-->
+<div class="page active" id="page-pos">
+  <div class="pos-grid">
+
+    <!-- LEFT: Scanner + Checkout -->
+    <div class="left-col">
+
+      <!-- Scanner -->
+      <div class="card">
+        <div class="scanner-body">
+
+          <!-- Mode Tabs -->
+          <div class="scan-mode-tabs">
+            <button class="scan-mode-tab active" id="tab-hw" onclick="switchScanMode('hw')">?? 鉆鉊腦鉊獅?鉊冢?鉊芹?鉊? / ????/button>
+            <button class="scan-mode-tab" id="tab-cam" onclick="switchScanMode('cam')">? 鉊艇鉆葉鉊?/ ?豢?</button>
+          </div>
+
+          <!-- HW Scanner Panel -->
+          <div id="panel-hw" style="display:flex;flex-direction:column;gap:10px;">
+            <div class="scanner-hw-wrap">
+              <input
+                id="hw-input"
+                class="scanner-hw-input"
+                type="text"
+                readonly
+                tabindex="-1"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="鉊芹?鉊?鉊徇腦鉊獅葉鉊葩鉊﹤?鉆?鉊耜腦鉆?鉊?鉊?.. / ???撓?交?蝣?.."
+              >
+              <span class="scanner-hw-icon">?</span>
+            </div>
+          </div>
+
+          <!-- Camera Panel -->
+          <div id="panel-cam" style="display:none;flex-direction:column;gap:10px;">
+            <div class="video-wrap">
+              <div class="cam-ph" id="cam-ph">
+                <div class="icon">?</div>
+                <div>鉊?鉊虜鉆腹 "鉆鉊?葩鉆腹鉊芹?鉊?" 鉆鉊虞鉆葉鉆鉊葩鉊?鉊丞?鉊冢?</div>
+                <div class="hint">鉊?葉鉊腦鉊晤? EAN / UPC / Code 128 / Code 39 鉆艇鉊啤葉鉊獅?鉊?</div>
+              </div>
+              <video id="preview" autoplay muted playsinline></video>
+              <div class="scan-overlay" id="scan-ol" style="display:none">
+                <div class="scan-line"></div>
+                <div class="sc tl"></div><div class="sc tr"></div>
+                <div class="sc bl"></div><div class="sc br"></div>
+              </div>
+            </div>
+            <div class="scan-controls">
+              <button class="btn btn-accent" style="flex:1" id="btn-start" onclick="startScanner()">??鉆鉊?葩鉆腹鉊芹?鉊? / ????</button>
+              <button class="btn btn-ghost" id="btn-stop" onclick="stopScanner()" disabled>??鉊徇腺鉊詮? / ?迫</button>
+            </div>
+          </div>
+
+          <div class="scan-st" id="scan-st">鉊?葉鉊芹?鉊?... / 蝑???</div>
+          <button class="btn-nobc" onclick="openNobcList()">+ 鉊芹葩鉊?鉆葡鉆腹鉆腹鉊菽?鉊耜腦鉆?鉊?鉊?/ ?⊥?蝣澆???/button>
         </div>
-    </nav>
+      </div>
 
-    <!-- 收銀頁面 -->
-    <div id="scan-page" class="page active p-4 max-w-2xl mx-auto pb-24">
-        <div class="bg-white rounded-3xl shadow-sm p-5 mb-6">
-            <h2 class="text-xl font-bold mb-4 flex flex-col">
-                <span>สแกนบาร์โค้ด</span>
-                <span class="text-xs font-normal text-gray-400 italic">掃描條碼</span>
-            </h2>
-            <div id="video-container">
-                <video id="video-preview" autoplay playsinline muted></video>
-                <div class="scan-overlay"></div>
-            </div>
-            <div class="mt-5 flex gap-3">
-                <button id="start-btn" onclick="startScanner()" class="bg-emerald-500 text-white px-4 py-4 rounded-2xl flex-1 flex flex-col items-center justify-center shadow-lg active:scale-95 transition-transform">
-                    <span class="font-bold text-lg">เปิดกล้อง</span>
-                    <span class="text-xs opacity-90">開啟相機</span>
-                </button>
-                <button id="stop-btn" onclick="stopScanner()" class="bg-rose-500 text-white px-4 py-4 rounded-2xl flex-1 hidden flex flex-col items-center justify-center shadow-lg active:scale-95 transition-transform">
-                    <span class="font-bold text-lg">ปิดกล้อง</span>
-                    <span class="text-xs opacity-90">關閉相機</span>
-                </button>
-            </div>
-            <p id="scan-status" class="text-sm text-gray-400 mt-4 text-center">พร้อมใช้งาน (準備就緒)</p>
+      <!-- Checkout -->
+      <div class="co-panel">
+        <div class="grand">
+          <div class="glbl">鉊Ｒ葉鉊腦鉊抉腹鉊萵鉆?鉊徇腹鉊?span class="zh">蝮質?</span></div>
+          <div class="gamt" id="grand-total">NT$ 0</div>
         </div>
-
-        <div class="bg-white rounded-3xl shadow-sm p-5">
-            <h2 class="text-xl font-bold mb-5 flex justify-between items-center">
-                <div class="flex flex-col">
-                    <span>รายการสินค้า</span>
-                    <span class="text-xs font-normal text-gray-500">購物清單</span>
-                </div>
-                <span id="item-count" class="text-sm font-normal bg-blue-50 text-blue-600 px-4 py-1 rounded-full font-bold">0 รายการ</span>
-            </h2>
-            
-            <div id="cart-items" class="space-y-4 min-h-[300px] border-b border-dashed pb-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-16 text-gray-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <p class="italic text-sm">กรุณาสแกนสินค้า... (請開始掃描商品...)</p>
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center mb-8 px-2">
-                <div class="flex flex-col">
-                    <span class="text-2xl font-bold text-gray-800">ยอดรวมทั้งหมด</span>
-                    <span class="text-xs text-gray-400">總計金額 (Total)</span>
-                </div>
-                <div class="text-right">
-                    <span class="text-4xl font-black text-blue-700 tracking-tight">NT$ <span id="total-price">0</span></span>
-                </div>
-            </div>
-            
-            <button onclick="checkout()" class="w-full bg-blue-700 text-white py-6 rounded-2xl text-2xl font-bold hover:bg-blue-800 shadow-xl active:scale-[0.98] transition-all flex flex-col items-center">
-                <span>ยืนยันการชำระเงิน</span>
-                <span class="text-xs font-normal opacity-70">確認結帳 (Checkout)</span>
-            </button>
+        <div class="co-actions">
+          <button class="btn-checkout" id="btn-checkout" onclick="openReview()" disabled>鉊董鉊?萼鉆鉊葩鉊?/ 蝯董</button>
+          <button class="btn-hold" id="btn-hold" onclick="holdCart()" disabled>??鉊萵鉊腦鉊耜腺鉊葡鉊?艇鉊嫩?鉊?鉊耜?鉊?鉊菽?鉆葷鉆?鉆葉鉊?/ ?怠?甇文恥鈭箄頃?抵?</button>
         </div>
+        <!-- ?怠??” -->
+        <div id="hold-bar-wrap"></div>
+      </div>
+
     </div>
 
-    <!-- 報表頁面 -->
-    <div id="report-page" class="page p-4 max-w-4xl mx-auto pb-20">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 class="text-lg font-bold">ยอดขายรายวัน (每日銷售額)</h3>
-                <canvas id="dailyChart" class="mt-4"></canvas>
-            </div>
-            <div class="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 class="text-lg font-bold">ยอดขายรายเดือน (每月銷售額)</h3>
-                <canvas id="monthlyChart" class="mt-4"></canvas>
-            </div>
+    <!-- RIGHT: Cart list -->
+    <div class="right-col">
+      <div class="sec-lbl">
+        鉊萼鉊腦鉆葡鉊芹葩鉊?鉆葡 <span class="zh">鞈潛頠?/span>
+        <span class="count-badge" id="item-count">0</span>
+        <button class="btn btn-danger" style="margin-left:auto;font-size:12px;padding:5px 11px" onclick="clearCart()">鉊丞?鉊耜?鉊萼鉊腦鉆葡 / 皜鞈潛頠?/button>
+      </div>
+      <div class="tbl">
+        <div class="t-head">
+          <div>#</div>
+          <div>鉊芹葩鉊?鉆葡 <span class="zh">??</span></div>
+          <div>鉊?葡鉊葡 <span class="zh">?桀</span></div>
+          <div>鉊董鉊葷鉊?<span class="zh">?賊?</span></div>
+          <div></div>
         </div>
-        <div class="mt-6 bg-white p-6 rounded-3xl shadow-sm">
-            <h3 class="text-lg font-bold mb-4">ประวัติการทำรายการ (交易紀錄)</h3>
-            <div class="overflow-hidden rounded-xl border border-gray-100">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-                        <tr>
-                            <th class="py-4 px-4">เวลา (時間)</th>
-                            <th class="py-4 px-4 text-right">ยอดเงิน (金額)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-body" class="divide-y divide-gray-50"></tbody>
-                </table>
-            </div>
+        <div id="cart-body">
+          <div class="empty-st">
+            <div class="ei">??</div>
+            <div>鉊芹?鉊?鉊葡鉊??鉆?鉆?鉆鉊虞鉆葉鉆鉊葩鉆腹鉊芹葩鉊?鉆葡</div>
+            <div class="zh">撠??嚗???璇Ⅳ?憓璇Ⅳ??</div>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- 彈窗 Modal -->
-    <div id="product-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in duration-300">
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                </div>
-                <h3 id="modal-title" class="text-2xl font-bold text-gray-800">ข้อมูลสินค้า</h3>
-                <p id="modal-barcode" class="text-blue-600 font-mono font-bold mt-1"></p>
-            </div>
-            
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ชื่อสินค้า (品項名稱)</label>
-                    <input type="text" id="new-product-name" placeholder="..." class="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ราคา (價格) NT$</label>
-                    <input type="number" id="new-product-price" placeholder="0" class="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold text-xl">
-                </div>
-            </div>
+  </div>
+</div>
 
-            <div class="flex gap-4 mt-10">
-                <button onclick="closeProductModal()" class="flex-1 px-4 py-4 rounded-2xl text-gray-400 font-bold hover:bg-gray-100 transition-colors flex flex-col items-center">
-                    <span>ยกเลิก</span>
-                    <span class="text-[10px]">取消</span>
-                </button>
-                <button onclick="saveNewProduct()" class="flex-1 px-4 py-4 bg-blue-700 text-white rounded-2xl font-bold hover:bg-blue-800 shadow-lg shadow-blue-200 transition-all flex flex-col items-center">
-                    <span>บันทึก</span>
-                    <span class="text-[10px]">儲存</span>
-                </button>
-            </div>
-        </div>
+<!-- ??????蝞∠? ????-->
+<div class="page" id="page-products">
+  <div class="page-hd">
+    <div>
+      <div class="page-hd-title">鉊芹葩鉊?鉆葡 <span class="zh">??蝞∠?</span></div>
+      <div class="page-hd-sub" id="prod-count-lbl"></div>
     </div>
-
-    <!-- Toast -->
-    <div id="toast" class="fixed bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900/95 text-white px-8 py-5 rounded-3xl opacity-0 transition-all pointer-events-none z-[110] text-center shadow-2xl min-w-[280px]">
-        Message
+    <div class="btn-row" style="align-items:center">
+      <!-- 鞈?瑼? -->
+      <div id="file-status-prod" onclick="pickDataFile()" title="暺??豢??????獢?>
+        <span id="file-icon-prod">?</span>
+        <span id="file-label-prod">暺??豢?鞈?瑼?</span>
+      </div>
+      <div id="fb-status" class="off" onclick="openModal('m-firebase')" style="cursor:pointer" title="Firebase ?脩垢?郊???>
+        <span id="fb-icon">??</span>
+        <span id="fb-label">Firebase ?芷??</span>
+      </div>
+      <!-- ?唳?蝣潮???-->
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface);border:1.5px solid var(--border2);border-radius:9px;margin-right:4px">
+        <span style="font-size:12px;font-family:var(--zh);color:var(--text2);white-space:nowrap">?唳?蝣潸?憓?/span>
+        <button id="toggle-new-bc" onclick="toggleNewBcMode()" style="position:relative;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;transition:background .2s;background:var(--muted2);flex-shrink:0" title="ON嚗??唳?交?蝣潭?敶?啣?閬? / OFF嚗?暺蕭??>
+          <span id="toggle-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+        </button>
+        <span id="toggle-label" style="font-size:11px;font-family:var(--mono);color:var(--muted);font-weight:700">OFF</span>
+      </div>
+      <button class="btn btn-accent" onclick="openModal('m-addprod')">+ 鉆鉊葩鉆腹鉊芹葩鉊?鉆葡 / ?啣?璇Ⅳ??</button>
+      <button class="btn btn-ghost" style="border-color:var(--purple);color:var(--purple)" onclick="openModal('m-addnobc')">+ 鉊芹葩鉊?鉆葡鉆腹鉆腹鉊菽?鉊耜腦鉆?鉊?鉊?/ ?啣??⊥?蝣澆???/button>
+      <button class="btn btn-green" onclick="exportProducts()">漎?CSV / ?臬?券??</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('imp-prod').click()">漎?CSV / ?臬??</button>
+      <input type="file" id="imp-prod" accept=".csv" style="display:none" onchange="importProducts(event)">
+      <button class="btn btn-danger" onclick="clearAllProducts()" style="border-color:#dc2626;color:#dc2626">?? 皜征?????/button>
     </div>
+  </div>
+  <!-- ???汗?嚗蔭???? + ???批捆 -->
+  <div id="prod-cat-sticky" style="display:none;position:sticky;top:54px;z-index:100;background:var(--surface2);border-bottom:2px solid var(--border);padding:0;"></div>
+  <div id="prod-main-area"></div>
+</div>
 
-    <script>
-        // --- 核心邏輯 (與先前功能一致) ---
-        const defaultProducts = {
-            "4710018110123": { name: "Coke (可口可樂)", price: 35 },
-            "4710123456789": { name: "Rice Ball (肉鬆飯糰)", price: 30 }
-        };
-        
-        let products = JSON.parse(localStorage.getItem('pos_custom_products') || JSON.stringify(defaultProducts));
-        let cart = [];
-        let salesHistory = JSON.parse(localStorage.getItem('pos_sales_history') || '[]');
-        let videoStream = null;
-        let scanInterval = null;
-        let pendingBarcode = null;
+<!-- ?????瑕?梯” ????-->
+<div class="page" id="page-report">
+  <div class="report-top">
+    <div class="stat-row">
+      <div class="stat-chip">
+        <div class="slbl">鉊Ｒ葉鉊?鉊耜腺鉊抉萵鉊?鉊菽? / 隞?瑕</div>
+        <div class="sval hi" id="stat-today">NT$ 0</div>
+        <div class="ssub"><span id="stat-today-count">0</span> 鉊?葡鉊Ｒ?鉊耜腦 / 蝑漱??/div>
+      </div>
+      <div class="stat-chip">
+        <div class="slbl">鉊Ｒ葉鉊?鉊耜腺鉊芹萵鉊?鉊耜葦鉆?鉊菽? / ?祇梢??/div>
+        <div class="sval" id="stat-week">NT$ 0</div>
+        <div class="ssub"><span id="stat-week-count">0</span> 鉊?葡鉊Ｒ?鉊耜腦 / 蝑漱??/div>
+      </div>
+      <div class="stat-chip">
+        <div class="slbl">鉊Ｒ葉鉊?鉊耜腺鉆鉊虞鉊冢?鉊葭鉆?/ ?祆??瑕</div>
+        <div class="sval" id="stat-month">NT$ 0</div>
+        <div class="ssub"><span id="stat-month-count">0</span> 鉊?葡鉊Ｒ?鉊耜腦 / 蝑漱??/div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" style="font-size:12px;padding:7px 12px" onclick="exportCSV()">漎?鉊芹?鉊葉鉊冢? CSV / ?臬?梯”</button>
+      <button class="btn btn-ghost" style="font-size:12px;padding:7px 12px" onclick="document.getElementById('imp-report').click()">漎?鉊董鉆鉊?鉊?/ ?臬</button>
+      <input type="file" id="imp-report" accept=".json" style="display:none" onchange="importReport(event)">
+      <button class="btn btn-danger" style="font-size:12px;padding:7px 12px" onclick="clearAllData()">?? 鉊丞?鉊萵鉆?鉊徇腹鉊?/ 皜</button>
+    </div>
+  </div>
+  <div class="report-cols">
+    <div class="report-panel">
+      <div class="rp-hd">
+        <div class="rp-hd-title">鉊?葡鉊Ｒ?鉊虞鉊冢? <span class="zh">瘥??梯”</span></div>
+      </div>
+      <div class="r-list" id="monthly-list">
+        <div class="empty-st"><div class="ei">??</div><div class="zh">撠?瑕鞈?</div></div>
+      </div>
+    </div>
+    <div class="report-panel">
+      <div class="rp-hd">
+        <div class="rp-hd-title">鉊?葡鉊Ｒ葵鉊晤?鉊葡鉊徇? <span class="zh">瘥勗銵?/span></div>
+      </div>
+      <div class="r-list" id="weekly-list">
+        <div class="empty-st"><div class="ei">??</div><div class="zh">撠?瑕鞈?</div></div>
+      </div>
+    </div>
+    <div class="report-panel">
+      <div class="rp-hd">
+        <div class="rp-hd-title">鉊?葡鉊Ｒ葷鉊晤? <span class="zh">瘥?梯”</span></div>
+      </div>
+      <div class="r-list" id="daily-list">
+        <div class="empty-st"><div class="ei">??</div><div class="zh">撠?瑕鞈?</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:var(--zh);text-align:right">? 暺?????????格?蝝?/div>
+</div>
 
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            window.scrollTo(0,0);
-            if(pageId === 'report-page') updateReports();
-        }
+<!-- ????蝺?閮??????-->
+<div class="page" id="page-online-orders">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text)">?? 鉊冢葉鉆鉊葉鉊??鉊冢葉鉊?鉊丞?鉆?<span style="font-family:var(--zh);font-size:14px;color:var(--muted)">蝺?閮</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px;font-family:var(--zh)">摰Ｘ??蝺????????/div>
+    </div>
+    <button class="btn btn-ghost" onclick="loadOnlineOrders()" style="font-size:13px;padding:7px 14px">?? 鉊?葭鉆鉊腦鉊?/button>
+  </div>
 
-        async function startScanner() {
-            const status = document.getElementById('scan-status');
-            const video = document.getElementById('video-preview');
-            if (!('BarcodeDetector' in window)) {
-                showToast("ไม่รองรับการสแกนบนเบราว์เซอร์นี้\n(此瀏覽器不支援掃描功能)");
-                return;
-            }
-            try {
-                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                video.srcObject = videoStream;
-                document.getElementById('start-btn').classList.add('hidden');
-                document.getElementById('stop-btn').classList.remove('hidden');
-                status.innerText = "กำลังสแกน... (掃描中...)";
-                const barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'qr_code', 'code_128', 'upc_a'] });
-                scanInterval = setInterval(async () => {
-                    if (document.getElementById('product-modal').classList.contains('active')) return;
-                    try {
-                        const barcodes = await barcodeDetector.detect(video);
-                        if (barcodes.length > 0) handleBarcodeFound(barcodes[0].rawValue);
-                    } catch (e) {}
-                }, 600);
-            } catch (err) {
-                showToast("ไม่สามารถเข้าถึงกล้องได้\n(無法取得相機權限)");
-            }
-        }
+  <!-- Stats buttons -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+    <button onclick="ooSetFilter('pending')" id="oo-btn-pending" class="card" style="padding:14px 12px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all .18s;background:var(--surface)">
+      <div style="font-size:22px;font-weight:700;color:var(--red)" id="oo-stat-pending">0</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">??鉊?葉鉊董鉆鉊葩鉊?鉊耜腦<br><span style="font-family:var(--zh)">敺???/span></div>
+    </button>
+    <button onclick="ooSetFilter('done')" id="oo-btn-done" class="card" style="padding:14px 12px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all .18s;background:var(--surface)">
+      <div style="font-size:22px;font-weight:700;color:var(--green)" id="oo-stat-done">0</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">??鉆鉊芹腦鉆?鉊芹葩鉆?<br><span style="font-family:var(--zh)">撌脣???/span></div>
+    </button>
+    <button onclick="ooOpenMemberList()" class="card" style="padding:14px 12px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all .18s;background:var(--surface)">
+      <div style="font-size:22px;font-weight:700;color:var(--purple)" id="oo-stat-members">0</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">? 鉊芹腹鉊耜?鉊毯?<br><span style="font-family:var(--zh)">??”</span></div>
+    </button>
+  </div>
 
-        function stopScanner() {
-            if (videoStream) videoStream.getTracks().forEach(track => track.stop());
-            clearInterval(scanInterval);
-            document.getElementById('start-btn').classList.remove('hidden');
-            document.getElementById('stop-btn').classList.add('hidden');
-            document.getElementById('scan-status').innerText = "ปิดกล้องแล้ว (相機已關閉)";
-        }
+  <!-- Filter indicator -->
+  <div id="oo-filter-bar" style="display:none;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+    <span id="oo-filter-label" style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:50px;background:var(--surface2);color:var(--muted)"></span>
+    <button onclick="ooSetFilter('all')" style="font-size:11px;color:var(--muted2);background:none;border:none;cursor:pointer;text-decoration:underline">憿舐內?券</button>
+  </div>
 
-        function handleBarcodeFound(code) {
-            if (cart.length > 0 && cart[0].barcode === code && (Date.now() - cart[0].timestamp < 2000)) return;
-            if (products[code]) {
-                addToCart(code, products[code]);
-            } else {
-                openProductModal(code, "พบบาร์โค้ดใหม่ (發現新條碼)");
-            }
-        }
+  <!-- Order list -->
+  <div class="card" id="oo-list-wrap">
+    <div id="oo-list" style="padding:8px">
+      <div style="text-align:center;padding:40px;color:var(--muted2)">
+        <div style="font-size:32px;margin-bottom:8px">??</div>
+        <div style="font-family:var(--zh)">撠蝺?閮</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        function addToCart(code, product) {
-            cart.unshift({ ...product, barcode: code, timestamp: Date.now(), id: Math.random().toString(36).substr(2, 9) });
-            if ("vibrate" in navigator) navigator.vibrate(100);
-            renderCart();
-            showToast(`เพิ่ม: ${product.name}`);
-        }
+<!-- ????Modal: 蝺?閮?敦 ????-->
+<div class="overlay" id="m-online-order">
+  <div class="mbox" style="width:500px;max-height:88vh;overflow-y:auto">
+    <div class="m-title" id="ood-title">?? 鉊?葡鉊Ｒ艇鉊啤?鉊冢葭鉊Ｒ?鉊冢葉鉆鉊葉鉊??<span class="zh">閮?敦</span></div>
+    <div id="ood-body"></div>
+    <div class="m-acts" style="margin-top:16px;flex-wrap:wrap;gap:8px" id="ood-acts"></div>
+  </div>
+</div>
 
-        function openProductModal(code, title) {
-            pendingBarcode = code;
-            document.getElementById('modal-title').innerText = title || "ข้อมูลสินค้า";
-            document.getElementById('modal-barcode').innerText = code;
-            const existing = products[code];
-            document.getElementById('new-product-name').value = existing ? existing.name : "";
-            document.getElementById('new-product-price').value = existing ? existing.price : "";
-            document.getElementById('product-modal').classList.add('active');
-        }
+<!-- ????Modal: 蝣箄??芷閮 ????-->
+<div class="overlay" id="m-confirm-delete">
+  <div class="mbox" style="width:360px">
+    <div class="m-title" style="color:var(--red)">?? 鉊Ｒ虞鉊腺鉊晤?鉊葡鉊?艇鉊?span class="zh">蝣箄??芷</span></div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px;font-family:var(--zh)">
+      蝣箏?閬?斗迨閮??<br>甇斗?雿??郊?芷 Firebase 鞈?嚗?b style="color:var(--red)">?⊥?敺拙?</b>??    </div>
+    <div class="m-acts">
+      <button class="btn" style="flex:1;background:var(--red);color:#fff;border:none" id="confirm-delete-btn" onclick="">??蝣箄??芷</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-confirm-delete')">??</button>
+    </div>
+  </div>
+</div>
 
-        function closeProductModal() {
-            document.getElementById('product-modal').classList.remove('active');
-            pendingBarcode = null;
-        }
+<!-- ????Modal: 蝣箄?閮?梯” ????-->
+<div class="overlay" id="m-confirm-report">
+  <div class="mbox" style="width:360px">
+    <div class="m-title" style="color:var(--green)">?? 鉊Ｒ虞鉊腺鉊晤?鉊萵鉊?鉊嗣?鉊?葡鉊Ｒ?鉊耜?<span class="zh">蝣箄?閮?梯”</span></div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px;font-family:var(--zh)">
+      蝣箏?撠迨閮??閮<b>隞?梯”</b>嚗蒂蝘餉閰脫??∠?閮甇瑕嚗?br>
+      <span style="font-size:12px;color:var(--muted)">甇斗?雿瘜儔??隢Ⅱ隤?憿迤蝣箝?/span>
+    </div>
+    <div class="m-acts">
+      <button class="btn" style="flex:1;background:var(--green);color:#fff;border:none" id="confirm-report-btn" onclick="">??蝣箄?閮?梯”</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-confirm-report')">??</button>
+    </div>
+  </div>
+</div>
 
-        function saveNewProduct() {
-            const name = document.getElementById('new-product-name').value.trim();
-            const price = parseInt(document.getElementById('new-product-price').value);
-            if (!name || isNaN(price)) { showToast("ข้อมูลไม่ครบ (資訊不完整)"); return; }
-            products[pendingBarcode] = { name, price };
-            localStorage.setItem('pos_custom_products', JSON.stringify(products));
-            
-            cart.forEach(item => { if(item.barcode === pendingBarcode) { item.name = name; item.price = price; } });
-            if (!cart.some(i => i.barcode === pendingBarcode && (Date.now() - i.timestamp < 1000))) {
-                addToCart(pendingBarcode, { name, price });
-            } else {
-                renderCart();
-                showToast("บันทึกแล้ว (已儲存)");
-            }
-            closeProductModal();
-        }
+<!-- ????Modal: ??” ????-->
+<div class="overlay" id="m-member-list">
+  <div class="mbox" style="width:460px;max-height:88vh;overflow-y:auto">
+    <div class="m-title">? 鉊?葡鉊Ｒ?鉊獅?鉊冢葵鉊﹤葡鉊葩鉊?span class="zh">??”</span></div>
+    <div id="member-list-body" style="margin-bottom:12px"></div>
+    <div class="m-acts">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('m-member-list')">鉊葩鉊?/ ??</button>
+    </div>
+  </div>
+</div>
 
-        function renderCart() {
-            const container = document.getElementById('cart-items');
-            const totalDisplay = document.getElementById('total-price');
-            const countDisplay = document.getElementById('item-count');
-            if (cart.length === 0) {
-                container.innerHTML = `<div class="flex flex-col items-center justify-center py-16 text-gray-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <p class="italic text-sm text-center">กรุณาสแกนสินค้า...<br><span>請開始掃描商品...</span></p>
-                </div>`;
-                totalDisplay.innerText = "0";
-                countDisplay.innerText = "0 รายการ";
-                return;
-            }
-            let total = 0;
-            container.innerHTML = cart.map(item => {
-                total += item.price;
-                return `<div class="flex justify-between items-center bg-gray-50 p-5 rounded-[1.5rem] border border-gray-100 relative shadow-sm">
-                    <div class="flex-1">
-                        <p class="font-bold text-gray-800 text-lg leading-tight">${item.name}</p>
-                        <p class="text-[10px] text-gray-400 font-mono mt-1">${item.barcode}</p>
-                        <button onclick="openProductModal('${item.barcode}', 'แก้ไขสินค้า')" class="mt-3 text-blue-600 text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full w-fit">
-                            <span>แก้ไข</span> <span class="text-[10px] font-normal opacity-70">(修改)</span>
-                        </button>
-                    </div>
-                    <div class="text-right flex flex-col items-end gap-3">
-                        <p class="font-black text-2xl text-gray-900 tracking-tighter">NT$ ${item.price}</p>
-                        <button onclick="removeItem('${item.id}')" class="text-gray-400 p-2 hover:text-rose-500 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
-            totalDisplay.innerText = total.toLocaleString();
-            countDisplay.innerText = `${cart.length} รายการ (品項)`;
-        }
+<!-- ????Modal: ?閮甇瑕 ????-->
+<div class="overlay" id="m-member-history">
+  <div class="mbox" style="width:480px;max-height:88vh;overflow-y:auto">
+    <div class="m-title" id="mh-title">?? 鉊腦鉊啤葷鉊晤?鉊毯葉鉊冢?鉊葉鉊??<span class="zh">閮甇瑕</span></div>
+    <div id="mh-body"></div>
+    <div class="m-acts" style="margin-top:12px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('m-member-history');openModal('m-member-list')">??鉊艇鉊晤? / 餈?</button>
+    </div>
+  </div>
+</div>
 
-        function removeItem(id) { cart = cart.filter(item => item.id !== id); renderCart(); }
+<!-- ????Checkout Review Overlay ????-->
+<div class="review-overlay" id="review-overlay">
+  <div class="review-nav">
+    <button class="back-btn" onclick="closeReview()">??鉊艇鉊晤? / 餈??園???/button>
+    <div class="rv-title">鉊Ｒ虞鉊腺鉊晤?鉊?葡鉊Ｒ?鉊耜腦鉊芹萵鉆?鉊虞鉆葉<span class="zh">蝣箄?鞈潸眺皜</span></div>
+  </div>
+  <div class="review-body">
+    <table class="rv-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>鉊芹葩鉊?鉆葡 / ??</th>
+          <th class="num" style="width:100px">鉊?葡鉊葡 / ?桀</th>
+          <th class="num" style="width:80px">鉊董鉊葷鉊?/ ?賊?</th>
+          <th class="sub" style="width:110px">鉊?葷鉊?/ 撠?</th>
+        </tr>
+      </thead>
+      <tbody id="review-body"></tbody>
+    </table>
+  </div>
+  <div class="review-footer">
+    <div class="rv-total-row">
+      <div class="rtl">鉊Ｒ葉鉊腦鉊抉腹鉊萵鉆?鉊徇腹鉊?span class="zh">蝮質???</span></div>
+      <div class="rta" id="review-total-amt">NT$ 0</div>
+      <div class="rv-change-hint" id="rv-change-hint"></div>
+    </div>
+    <button class="btn-confirm" onclick="confirmCheckout()">??鉊Ｒ虞鉊腺鉊晤?鉊葡鉊??鉊喪腦鉊啤?鉊葩鉊?/ 蝣箏?蝯董</button>
+  </div>
+</div>
 
-        function checkout() {
-            if (cart.length === 0) { showToast("รายการว่างเปล่า! (清單是空的!)"); return; }
-            const total = cart.reduce((sum, item) => sum + item.price, 0);
-            salesHistory.push({ id: Date.now(), time: new Date().toISOString(), items: cart.length, total: total });
-            localStorage.setItem('pos_sales_history', JSON.stringify(salesHistory));
-            showToast(`ชำระเงินสำเร็จ (結帳成功)\nNT$ ${total}`);
-            cart = []; renderCart();
-        }
+<!-- ????Modal: ?唳?蝣?????-->
+<div class="overlay" id="m-newprod">
+  <div class="mbox">
+    <div class="m-title">??鉊?鉊葡鉊??鉆?鉆?鉆葦鉊﹤?<span class="zh">?潛?唳?蝣潘?隢撓?亙???閮?/span></div>
+    <div class="m-sub" id="np-bc"></div>
+    <div class="fg"><label>???迂 *</label><input class="fi" id="np-name" type="text" placeholder="靘?嚗丹瘜偌?璅?.."></div>
+    <div class="fg"><label>?桀嚗T$嚗?</label><input class="fi" id="np-price" type="number" min="0" step="1" placeholder="0"></div>
+    <div class="fg">
+      <label>?? 鉊徇腹鉊抉?鉊徇腹鉊嫩? / ??</label>
+      <select class="fi" id="np-cat"></select>
+    </div>
+    <div class="m-acts">
+      <button class="btn btn-accent" style="flex:1" onclick="saveNewProduct()">???脣?銝血??亥頃?抵?</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-newprod')">??</button>
+    </div>
+  </div>
+</div>
 
-        let dailyChart, monthlyChart;
-        function updateReports() {
-            const historyBody = document.getElementById('history-body');
-            const sortedHistory = [...salesHistory].sort((a, b) => b.id - a.id);
-            historyBody.innerHTML = sortedHistory.slice(0, 20).map(tx => `
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="py-4 px-4">
-                        <p class="font-bold text-gray-800">${new Date(tx.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                        <p class="text-[10px] text-gray-400">${new Date(tx.time).toLocaleDateString()}</p>
-                    </td>
-                    <td class="py-4 px-4 text-right">
-                        <p class="font-black text-blue-700 text-lg">NT$ ${tx.total}</p>
-                        <p class="text-[10px] text-gray-400">${tx.items} ชิ้น (件)</p>
-                    </td>
-                </tr>
-            `).join('');
-            const dailyData = {}; const monthlyData = new Array(12).fill(0);
-            salesHistory.forEach(tx => {
-                const date = new Date(tx.time); const dateStr = date.toISOString().split('T')[0];
-                dailyData[dateStr] = (dailyData[dateStr] || 0) + tx.total;
-                if (date.getFullYear() === new Date().getFullYear()) monthlyData[date.getMonth()] += tx.total;
-            });
-            const dLabels = []; const dValues = [];
-            for(let i=6; i>=0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i); const s = d.toISOString().split('T')[0];
-                dLabels.push(s.slice(5)); dValues.push(dailyData[s] || 0);
-            }
-            renderCharts(dLabels, dValues, monthlyData);
-        }
+<!-- ????Modal: 蝺刻摩?? ????-->
+<div class="overlay" id="m-editprod">
+  <div class="mbox">
+    <div class="m-title">??鉆?鉆?鉊葵鉊毯?鉊?鉊?span class="zh">蝺刻摩??</span></div>
+    <div class="m-sub" id="ep-bc"></div>
+    <div class="fg"><label>???迂 *</label><input class="fi" id="ep-name" type="text"></div>
+    <div class="fg"><label>?桀嚗T$嚗?</label><input class="fi" id="ep-price" type="number" min="0" step="1"></div>
+    <div class="fg">
+      <label>?? 鉊徇腹鉊抉?鉊徇腹鉊嫩? / ??</label>
+      <select class="fi" id="ep-cat"></select>
+    </div>
+    <div class="m-acts">
+      <button class="btn btn-accent" style="flex:1" onclick="saveEditProduct()">?脣?</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-editprod')">??</button>
+    </div>
+  </div>
+</div>
 
-        function renderCharts(dLabels, dValues, mData) {
-            const opt = { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } };
-            const ctxD = document.getElementById('dailyChart').getContext('2d');
-            if (dailyChart) dailyChart.destroy();
-            dailyChart = new Chart(ctxD, { type: 'bar', data: { labels: dLabels, datasets: [{ data: dValues, backgroundColor: '#3b82f6', borderRadius: 8 }] }, options: opt });
-            const ctxM = document.getElementById('monthlyChart').getContext('2d');
-            if (monthlyChart) monthlyChart.destroy();
-            monthlyChart = new Chart(ctxM, { type: 'line', data: { labels: ['1','2','3','4','5','6','7','8','9','10','11','12'], datasets: [{ data: mData, borderColor: '#10b981', tension: 0.4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)' }] }, options: opt });
-        }
+<!-- ????Modal: ?啣??? ????-->
+<div class="overlay" id="m-addprod">
+  <div class="mbox">
+    <div class="m-title">+ 鉆鉊葩鉆腹鉊芹葩鉊?鉆葡<span class="zh">?啣???</span></div>
+    <div class="fg"><label>璇Ⅳ *嚗AN / UPC / Code 128 / Code 39 蝑?</label><input class="fi" id="ap-bc" type="text" placeholder="頛詨????蝣? style="font-family:var(--mono)"></div>
+    <div class="fg"><label>???迂 *</label><input class="fi" id="ap-name" type="text" placeholder="靘?嚗丹瘜偌"></div>
+    <div class="fg"><label>?桀嚗T$嚗?</label><input class="fi" id="ap-price" type="number" min="0" step="1" placeholder="0"></div>
+    <div class="fg">
+      <label>?? 鉊徇腹鉊抉?鉊徇腹鉊嫩? / ??</label>
+      <select class="fi" id="ap-cat"></select>
+    </div>
+    <div class="m-acts">
+      <button class="btn btn-accent" style="flex:1" onclick="saveAddProduct()">?脣?</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-addprod')">??</button>
+    </div>
+  </div>
+</div>
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg; toast.style.bottom = "40px"; toast.classList.replace('opacity-0', 'opacity-100');
-            setTimeout(() => { toast.classList.replace('opacity-100', 'opacity-0'); toast.style.bottom = "12px"; }, 3000);
-        }
+<!-- ????Modal: ?⊥?蝣澆????殷????豢? + ??皜嚗??? -->
+<div class="overlay" id="m-nobc-list">
+  <div class="mbox" style="width:520px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+    <!-- 璅???-->
+    <div style="padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0;">
+      <div>
+        <div class="m-title" style="margin:0;font-size:25px" id="nobc-modal-title">鉊芹葩鉊?鉆葡鉆腹鉆腹鉊菽?鉊耜腦鉆?鉊?鉊?span class="zh" style="font-size:18px">?⊥?蝣澆???/span></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost" style="font-size:18px;padding:9px 16px;border-style:dashed;color:var(--purple);border-color:var(--purple)" onclick="openTempNobc()">??鉆鉊葩鉆腹鉊芹葩鉊?鉆葡鉊萵鉆葷鉊腦鉊耜葷 / ?急?憓???</button>
+      </div>
+    </div>
+    <!-- 蝵桅? header嚗???憿?嚗?典???銵券?憿舐內嚗?->
+    <div id="nobc-sticky-header" style="flex-shrink:0;display:none;"></div>
+    <!-- ???批捆?嚗?憿?銵?or ???”嚗???header嚗?->
+    <div id="nobc-list-body" style="flex:1;overflow-y:auto;min-height:0;"></div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;background:var(--surface2);flex-shrink:0;">
+      <button class="btn btn-ghost" onclick="closeModal('m-nobc-list')">??</button>
+    </div>
+  </div>
+</div>
 
-        window.onload = () => { renderCart(); };
+<!-- ????Modal: ?急?憓??? ????-->
+<div class="overlay" id="m-temp-nobc">
+  <div class="mbox">
+    <div class="m-title">??鉆鉊葩鉆腹鉊芹葩鉊?鉆葡鉊萵鉆葷鉊腦鉊耜葷<span class="zh">?急?憓???</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-family:var(--zh)">銝摮??????湔?鞈潛頠?/div>
+    <div class="fg"><label>??嚗T$嚗?</label><input class="fi" id="temp-price" type="number" min="0" step="1" placeholder="0"></div>
+    <div class="fg"><label>?賊?</label><input class="fi" id="temp-qty" type="number" min="1" step="1" value="1"></div>
+    <div class="m-acts">
+      <button class="btn btn-accent" style="flex:1" onclick="saveTempNobc()">鉆鉊葩鉆腹鉆?鉊萼鉊腦鉆葡 / ?鞈潛頠?/button>
+      <button class="btn btn-ghost" onclick="closeModal('m-temp-nobc')">??</button>
+    </div>
+  </div>
+</div>
 
-        // 模擬 Service Worker 註冊 (PWA 必備)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('data:text/javascript;base64,' + btoa('self.addEventListener("fetch", (e) => {});'));
-            });
-        }
-    </script>
+<!-- ????Modal: ??蝞∠??啣??⊥?蝣澆???????-->
+<div class="overlay" id="m-addnobc">
+  <div class="mbox">
+    <div class="m-title">+ 鉊芹葩鉊?鉆葡鉆腹鉆腹鉊菽?鉊耜腦鉆?鉊?鉊?span class="zh">?啣??⊥?蝣澆???/span></div>
+    <div class="fg"><label>???迂 *</label><input class="fi" id="addnobc-name" type="text" placeholder="靘?嚗??祥??鞎颯鋆賢???.."></div>
+    <div class="fg"><label>?桀嚗T$嚗?</label><input class="fi" id="addnobc-price" type="number" min="0" step="1" placeholder="0"></div>
+    <div class="fg">
+      <label>?? 鉊徇腹鉊抉?鉊徇腹鉊嫩? / ??</label>
+      <select class="fi" id="addnobc-cat"></select>
+    </div>
+    <div class="m-acts">
+      <button class="btn btn-accent" style="flex:1" onclick="savePermNobcProduct()">?脣?</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-addnobc')">??</button>
+    </div>
+  </div>
+</div>
+
+<!-- ????Modal: ?嗆? ????-->
+<div class="overlay" id="m-receipt">
+  <div class="mbox rcpt-wrap">
+    <div id="rcpt-content">
+      <div class="rcpt-hd">
+        <div class="rcpt-logo">POS SYSTEM</div>
+        <div class="rcpt-date" id="rcpt-date"></div>
+        <div class="rcpt-id" id="rcpt-id"></div>
+      </div>
+      <hr class="rdiv">
+      <div id="rcpt-items"></div>
+      <hr class="rdiv">
+      <div class="rcpt-total-row">
+        <div class="rl">鉊Ｒ葉鉊腦鉊抉腹鉊萵鉆?鉊徇腹鉊?/ 蝮質???</div>
+        <div class="ra" id="rcpt-total-amt"></div>
+      </div>
+      <div class="rcpt-ft">鉊葉鉊?鉊詮?鉊葭鉆?鉊?鉊腦鉊毯?鉊耜腦 / ???函??“ ??/div>
+    </div>
+    <div class="m-acts" style="margin-top:16px">
+      <button class="btn btn-accent" style="flex:1" onclick="closeModal('m-receipt')">鉊?鉊丞? / 蝣箄?</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-receipt');showPage('report',null)">鉊?葡鉊Ｒ?鉊耜? / ?梯”</button>
+    </div>
+  </div>
+</div>
+
+<!-- ????Modal: ?梯”?敦 ????-->
+<div class="overlay" id="m-drill">
+  <div class="mbox">
+    <div class="m-title" id="drill-title">?瑕?敦</div>
+    <div class="m-sub" id="drill-sub"></div>
+    <table class="drill-table">
+      <thead><tr><th>???迂</th><th class="num">?瑕?賊?</th><th class="num">撠?</th></tr></thead>
+      <tbody id="drill-body"></tbody>
+    </table>
+    <div class="drill-total">
+      <div class="dl">???嗅</div>
+      <div class="dr" id="drill-total-amt"></div>
+    </div>
+    <div class="m-acts" style="margin-top:14px">
+      <button class="btn btn-accent" style="flex:1" onclick="closeModal('m-drill')">??</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ????Modal: Firebase 閮剖? ????-->
+<div class="overlay" id="m-firebase">
+  <div class="mbox" style="width:500px">
+    <div class="m-title">?? Firebase 閮剖?<span class="zh">?脩垢?郊 Realtime Database</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;font-family:var(--zh)">
+      ?桀?雿輻<b>?身閮剖?</b>?芸??????????啣隞?Firebase 撠?嚗‵撖思??寞?雿??脣???br>
+      皜征???雿蒂?脣?嚗?Ｗ儔?身閮剖???    </div>
+    <div class="fb-cfg-note">
+      1. ?? <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> ??撠?閮剖? ??Web ?蝔?<br>
+      2. 銴ˊ??雿潸票?唬??對?閮剖??脣??冽璈?銝?銝 GitHub嚗?br>
+      3. Build ??Realtime Database ??蝣箄?撌脣遣蝡蒂閮剔皜祈岫璅∪? ??    </div>
+    <div class="fb-cfg-grid">
+      <div class="fg"><label>API Key</label><input class="fi" id="fb-apiKey" type="text" placeholder="AIzaSy..."></div>
+      <div class="fg"><label>Auth Domain</label><input class="fi" id="fb-authDomain" type="text" placeholder="your-project.firebaseapp.com"></div>
+      <div class="fg"><label>Database URL <span style="color:var(--red)">*</span></label><input class="fi" id="fb-dbUrl" type="text" placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app"></div>
+      <div class="fg"><label>Project ID</label><input class="fi" id="fb-projectId" type="text" placeholder="your-project"></div>
+      <div class="fg"><label>App ID</label><input class="fi" id="fb-appId" type="text" placeholder="1:123456789:web:abc..."></div>
+    </div>
+    <div id="fb-modal-status" style="font-size:12px;color:var(--muted);font-family:var(--zh);padding:8px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);margin-bottom:4px;display:none;"></div>
+    <div class="m-acts">
+      <button class="btn btn-accent" style="flex:1" onclick="saveFirebaseConfig()">?脣?銝阡??啗???/button>
+      <button class="btn btn-ghost" onclick="clearFirebaseConfig()" style="color:var(--red);border-color:var(--red)">皜閮剖?</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-firebase')">??</button>
+    </div>
+  </div>
+</div>
+
+<!-- ????Custom Numpad ????-->
+<div id="numpad-overlay" onclick="if(event.target===this)closeNumpad()">
+  <div id="numpad-box">
+    <div class="numpad-hd">
+      <div class="numpad-title" id="numpad-title">?賊? / 鉊董鉊葷鉊?/div>
+      <button class="numpad-close" onclick="closeNumpad()">?</button>
+    </div>
+    <div class="numpad-display" id="numpad-display">0</div>
+    <div class="numpad-grid">
+      <button class="npk" onclick="npKey('7')">7</button>
+      <button class="npk" onclick="npKey('8')">8</button>
+      <button class="npk" onclick="npKey('9')">9</button>
+      <button class="npk" onclick="npKey('4')">4</button>
+      <button class="npk" onclick="npKey('5')">5</button>
+      <button class="npk" onclick="npKey('6')">6</button>
+      <button class="npk" onclick="npKey('1')">1</button>
+      <button class="npk" onclick="npKey('2')">2</button>
+      <button class="npk" onclick="npKey('3')">3</button>
+      <button class="npk zero" onclick="npKey('0')">0</button>
+      <button class="npk del" onclick="npDel()">??/button>
+      <button class="npk ok" style="grid-column:1/-1" onclick="npConfirm()">??鉊Ｒ虞鉊腺鉊晤? / 蝣箄?</button>
+    </div>
+  </div>
+</div>
+
+<button id="scroll-fab" class="scroll-fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="?? / 鉊艇鉊晤?鉊?鉊耜?鉊?">??/button>
+
+<div id="toast"></div>
+
+<script type="module" src="pos-main.js"></script>
 </body>
 </html>
+
+
